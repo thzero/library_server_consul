@@ -2,9 +2,9 @@ import dns from 'dns';
 
 import consul from 'consul';
 
-import ServiceDiscoveryService from './base';
+import ResourceDiscoveryService from '@thzero/library_server/service/discovery/resource';
 
-class ConsulServiceDiscoveryService extends ServiceDiscoveryService {
+class ConsulResourceDiscoveryService extends ResourceDiscoveryService {
 	constructor() {
 		this._address = null;
 		this._consul = null;
