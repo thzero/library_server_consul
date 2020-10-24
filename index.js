@@ -6,6 +6,8 @@ import ResourceDiscoveryService from '@thzero/library_server/service/discovery/r
 
 class ConsulResourceDiscoveryService extends ResourceDiscoveryService {
 	constructor() {
+		super();
+
 		this._address = null;
 		this._consul = null;
 		this._name = null;
@@ -112,4 +114,4 @@ class ConsulResourceDiscoveryService extends ResourceDiscoveryService {
 	}
 }
 
-export default ConsulService;
+export default ConsulResourceDiscoveryService;
