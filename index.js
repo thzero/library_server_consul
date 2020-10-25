@@ -1,16 +1,23 @@
-import dns from 'dns';
+// import dns from 'dns';
 
 import consul from 'consul';
+import { Mutex as asyncMutex } from 'async-mutex';
 
-import ResourceDiscoveryService from '@thzero/library_server/service/discovery/resource';
+import LibraryUtility from '@thzero/library_common/utility';
+
+import ResourceDiscoveryService from '@thzero/library_server/service/discovery/resources';
 
 class ConsulResourceDiscoveryService extends ResourceDiscoveryService {
 	constructor() {
 		super();
 
+		this._mutex = new asyncMutex();
+
 		this._address = null;
 		this._consul = null;
 		this._name = null;
+
+		this._services = new Map();
 	}
 
 	async cleanup() {
@@ -27,39 +34,56 @@ class ConsulResourceDiscoveryService extends ResourceDiscoveryService {
 
 	async _getService(correlationId, name) {
 		try {
-			const results = await new Promise((resolve, reject) => {
-				dns.resolve(name + 'service.consul', function(err, records) {
-					this._logger.debug2('\nDNS query', null, correlationId);
-					if (err) {
-						reject(err);
-						return;
-					}
+			let service = this._services.get(name);
+			if (!service)
+				return this._successResponse(service, correlationId);
 
-					this._logger.debug2('\nDNS query', records, correlationId);
-					if (!records || (records.length > 0)) {
-						reject(Error(`No DNS found for '${name}'.`));
-						return;
-					}
+			const release = await this._mutex.acquire();
+			try {
+				let service = this._services.get(name);
+				if (!service)
+					return this._successResponse(service, correlationId);
 
-					resolve(records[0]);
-				});
+				let results = await this._consul.agent.service.list();
 
-				// dns.resolveAny(name + 'service.consul', function(err, records) {
-				// 	this._logger.debug2('\nDNS ANY query', null, correlationId);
-				// 	if (err) {
-				// 		reject(err);
-				// 		return;
-				// 	}
+				this._services.set(name, service);
+			}
+			finally {
+				release();
+			}
+			// const results = await new Promise((resolve, reject) => {
+			// 	dns.resolve(name + 'service.consul', function(err, records) {
+			// 		this._logger.debug2('\nDNS query', null, correlationId);
+			// 		if (err) {
+			// 			reject(err);
+			// 			return;
+			// 		}
 
-				// 	this._logger.debug2('\nDNS ANY query', records, correlationId);
-				// 	if (!records || (records.length > 0)) {
-				// 		reject(Error(`No DNS ANY found for '${name}'.`));
-				// 		return;
-				// 	}
+			// 		this._logger.debug2('\nDNS query', records, correlationId);
+			// 		if (!records || (records.length > 0)) {
+			// 			reject(Error(`No DNS found for '${name}'.`));
+			// 			return;
+			// 		}
 
-				// 	resolve(records[0]);
-				// });
-			});
+			// 		resolve(records[0]);
+			// 	});
+
+			// 	// dns.resolveAny(name + 'service.consul', function(err, records) {
+			// 	// 	this._logger.debug2('\nDNS ANY query', null, correlationId);
+			// 	// 	if (err) {
+			// 	// 		reject(err);
+			// 	// 		return;
+			// 	// 	}
+
+			// 	// 	this._logger.debug2('\nDNS ANY query', records, correlationId);
+			// 	// 	if (!records || (records.length > 0)) {
+			// 	// 		reject(Error(`No DNS ANY found for '${name}'.`));
+			// 	// 		return;
+			// 	// 	}
+
+			// 	// 	resolve(records[0]);
+			// 	// });
+			// });
 
 			return this._successResponse(results, correlationId);
 		}
@@ -75,7 +99,7 @@ class ConsulResourceDiscoveryService extends ResourceDiscoveryService {
 		this._address = address;
 
 		try {
-			dns.setServers([this._address + '8600']); // query against the consul agent
+			// dns.setServers([ this._address + ':8600' ]); // query against the consul agent
 			//console.log(dns.getServers());
 
 			this._consul = consul({
@@ -84,9 +108,9 @@ class ConsulResourceDiscoveryService extends ResourceDiscoveryService {
 			});
 
 			const config = {
-				name: packageJson.name,
-				ttl: '15s',
-				notes: 'This is an example check.',
+				id: LibraryUtility.generateId(),
+				name: packageJson.name + '_instance',
+				ttl: '10s',
 				address: this._address,
 				port: port
 			};
