@@ -92,11 +92,11 @@ class ConsulResourceDiscoveryService extends ResourceDiscoveryService {
 		}
 	}
 
-	async _initialize(correlationId, address, port, opts) {
+	async _initialize(correlationId, opts) {
 		const packagePath = `${process.cwd()}/package.json`;
 		const packageJson = require(packagePath);
 
-		this._address = address;
+		this._address = opts.address;
 
 		try {
 			// dns.setServers([ this._address + ':8600' ]); // query against the consul agent
@@ -110,17 +110,32 @@ class ConsulResourceDiscoveryService extends ResourceDiscoveryService {
 			const config = {
 				id: LibraryUtility.generateId(),
 				name: packageJson.name + '_instance',
-				ttl: '10s',
 				address: this._address,
-				port: port
+				port: opts.port,
+				meta: {
+					grpcPort: `${opts.grpc.port}`,
+					grpcTls: `${opts.grpc.tls}`
+				},
+				check: {
+					http: `http${opts.https ? 's' : ''}://${opts.address}:${opts.port}/${opts.healthCheck}`,
+					interval: opts.interval ? opts.interval : '5s',
+					timeout: opts.timeout ? opts.timeout : '1s',
+					deregistercriticalserviceafter: '30s'
+				}
 			};
 			if (opts) {
 				if (!String.isNullOrEmpty(opts.name))
 					config.name = opts.name;
-				if (!String.isNullOrEmpty(opts.ttl))
-					config.ttl = opts.ttl;
 				if (!String.isNullOrEmpty(opts.description))
 					config.notes = opts.description;
+				if (!String.isNullOrEmpty(opts.name))
+					config.name = opts.name;
+				if (!String.isNullOrEmpty(opts.interval))
+					config.interval = opts.interval;
+				if (!String.isNullOrEmpty(opts.timeout))
+					config.timeout = opts.timeout;
+				if (!String.isNullOrEmpty(opts.deregistercriticalserviceafter))
+					config.deregistercriticalserviceafter = opts.deregistercriticalserviceafter;
 			}
 
 			await this._consul.agent.service.register(config);
@@ -129,6 +144,43 @@ class ConsulResourceDiscoveryService extends ResourceDiscoveryService {
 		catch (err) {
 			return this._error('ConsulServiceDiscoveryService', '_initialize', null, err, null, null, correlationId);
 		}
+	}
+
+	async _register(correlationId, opts) {
+		const packagePath = `${process.cwd()}/package.json`;
+		const packageJson = require(packagePath);
+
+		this._address = opts.address;
+
+		// dns.setServers([ this._address + ':8600' ]); // query against the consul agent
+		//console.log(dns.getServers());
+
+		this._consul = consul({
+			host: this._address,
+			promisify: true
+		});
+
+		const config = {
+			id: LibraryUtility.generateId(),
+			name: packageJson.name + '_instance',
+			ttl: '10s',
+			address: this._address,
+			port: opts.port
+		};
+		if (!String.isNullOrEmpty(opts.name))
+			config.name = opts.name;
+		if (!String.isNullOrEmpty(opts.ttl))
+			config.ttl = opts.ttl;
+		if (!String.isNullOrEmpty(opts.description))
+			config.notes = opts.description;
+		if (opts.grpc && opts.grpc.port) {
+			config.grpc = `${opts.address}:${opts.grpc.port}`;
+			if (options.grpc.tls)
+				config.grpcusetls = options.grpc.tls;
+		}
+
+		await this._consul.agent.service.register(config);
+		return this._success(correlationId);
 	}
 
 	async _listing(correlationId) {

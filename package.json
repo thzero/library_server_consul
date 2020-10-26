@@ -1,9 +1,9 @@
 {
   "name": "@thzero/library_server_service_discovery_resources_consul",
-  "version": "0.10.5",
+  "version": "0.10.6",
   "version_major": 0,
   "version_minor": 10,
-  "version_patch": 5,
+  "version_patch": 6,
   "version_date": "10/25/2020",
   "description": "",
   "author": "thZero",
@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@thzero/library_common": "^0.10.3",
-    "@thzero/library_server": "^0.10.5",
+    "@thzero/library_server": "^0.10.6",
     "consul": "^0.39.0"
   },
   "devDependencies": {
