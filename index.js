@@ -45,8 +45,10 @@ class ConsulResourceDiscoveryService extends ResourceDiscoveryService {
 					return this._successResponse(service, correlationId);
 
 				let results = await this._consul.agent.service.list();
+				if (!results || (results.length === 0))
+					return this._error('ConsulServiceDiscoveryService', '_get', `Invalid results from discovery server for '${name}'.`, null, null, null, correlationId);
 
-				this._services.set(name, service);
+				this._services.set(name, results[0]);
 			}
 			finally {
 				release();
@@ -113,11 +115,12 @@ class ConsulResourceDiscoveryService extends ResourceDiscoveryService {
 				address: this._address,
 				port: opts.port,
 				meta: {
+					secure: `${opts.secure}`,
 					grpcPort: `${opts.grpc.port}`,
-					grpcTls: `${opts.grpc.tls}`
+					grpcSecure: `${opts.grpc.secure}`
 				},
 				check: {
-					http: `http${opts.https ? 's' : ''}://${opts.address}:${opts.port}/${opts.healthCheck}`,
+					http: `http${opts.secure ? 's' : ''}://${opts.address}:${opts.port}/${opts.healthCheck}`,
 					interval: opts.interval ? opts.interval : '5s',
 					timeout: opts.timeout ? opts.timeout : '1s',
 					deregistercriticalserviceafter: '30s'
