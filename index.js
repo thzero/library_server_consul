@@ -48,7 +48,7 @@ class ConsulResourceDiscoveryService extends ResourceDiscoveryService {
 				if (!results || (results.length === 0))
 					return this._error('ConsulServiceDiscoveryService', '_get', `Invalid results from discovery server for '${name}'.`, null, null, null, correlationId);
 
-				this._services.set(name, results[0]);
+				this._services.set(name, JSON.parse(results[0]));
 			}
 			finally {
 				release();
