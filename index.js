@@ -35,20 +35,26 @@ class ConsulResourceDiscoveryService extends ResourceDiscoveryService {
 	async _getService(correlationId, name) {
 		try {
 			let service = this._services.get(name);
-			if (!service)
+			if (service)
 				return this._successResponse(service, correlationId);
 
 			const release = await this._mutex.acquire();
 			try {
 				let service = this._services.get(name);
-				if (!service)
+				if (service)
 					return this._successResponse(service, correlationId);
 
 				let results = await this._consul.agent.service.list();
 				if (!results || (results.length === 0))
 					return this._error('ConsulServiceDiscoveryService', '_get', `Invalid results from discovery server for '${name}'.`, null, null, null, correlationId);
 
-				this._services.set(name, JSON.parse(results[0]));
+				results = results[name];
+				if (results === null)
+					return this._error('', '', `Invalid service for '${name}'.`, null, null, null, correlationId);
+
+				this._services.set(name, results);
+
+				return this._successResponse(results, correlationId);
 			}
 			finally {
 				release();
@@ -87,7 +93,7 @@ class ConsulResourceDiscoveryService extends ResourceDiscoveryService {
 			// 	// });
 			// });
 
-			return this._successResponse(results, correlationId);
+			// return this._successResponse(results, correlationId);
 		}
 		catch (err) {
 			return this._error('ConsulServiceDiscoveryService', '_get', null, err, null, null, correlationId);
