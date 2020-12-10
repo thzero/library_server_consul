@@ -55,6 +55,13 @@ class ConsulResourceDiscoveryService extends ResourceDiscoveryService {
 				if (results.Meta)
 					results.secure = results.Meta.secure;
 
+				if (results.grpc) {
+					results.grpc = {
+						port: results.grpc,
+						tls: results.grpcusetls
+					}
+				}
+
 				this._services.set(name, results);
 
 				return this._successResponse(results, correlationId);
